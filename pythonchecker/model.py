@@ -5,17 +5,20 @@ This file stores the plugin model classes (such as the code checkers).
 
 import abc
 import re
+import json
+import os.path
 from io import StringIO
 from subprocess import PIPE
 from subprocess import Popen
 
 
-class CheckError(object):
+class CheckerError(object):
     """Class model for code check errors."""
 
     DEFAULT_CASE = "E"
 
     def __init__(self, code, line, column, message):
+        """Return a new instance of CheckerError"""
 
         self.case = self.DEFAULT_CASE
         self.code = self.fit_to_string(code)
@@ -41,6 +44,42 @@ class CheckError(object):
             return max(int(x), 1)
         except ValueError:
             return 1
+
+
+class CheckerConfigurator(object):
+    """Interface to handle the database of preferences."""
+
+    JSON_FOLDER = os.path.dirname(os.path.realpath(__file__))
+    JSON_NAME = "configurator.json"
+    JSON_PATH = os.path.join(JSON_FOLDER, JSON_NAME)
+
+    def __init__(self):
+        """Return a new instance of CheckerConfigurator."""
+
+        self.dict = {"Pep8": {}, "PyLint": {}}
+        if not os.path.exists(self.JSON_PATH):
+            with open(self.JSON_PATH, "w") as json_file:
+                pass
+        else:
+            with open(self.JSON_PATH, "r") as json_file:
+                try:
+                    self.dict = json.load(json_file)
+                except ValueError:
+                    pass
+
+    def load(self, key):
+        """Return the preferences for a specific checker."""
+
+        try:
+            return self.dict[key]
+        except KeyError:
+            pass
+
+    def push(self):
+        """Update the preferences within the database."""
+
+        with open(self.JSON_PATH, "w") as json_file:
+            json.dump(self.dict, json_file, indent=4)
 
 
 class Checker(object):
@@ -69,8 +108,8 @@ class Checker(object):
         matches = (re.match(self.REGEX, l) for l in out_result)
         matches = (m for m in matches if m)
 
-        # Yield every PythonCheckerError instance.
-        for match in sorted(matches, key=lambda m: int(m.group("line"))):        
+        # Yield every CheckerError instance.
+        for match in sorted(matches, key=lambda m: int(m.group("line"))):
             yield self._new_error(**match.groupdict())
 
     def check_list_of_files(self, filelist):
@@ -83,7 +122,7 @@ class Checker(object):
     def _new_error(self, **kwargs):
         """Return new instance of CheckError."""
 
-        error = CheckError(**kwargs)
+        error = CheckerError(**kwargs)
         self._set_error_case(error)
         return error
 
@@ -96,6 +135,8 @@ class Checker(object):
 
 class CheckerPep8(Checker):
     """Python code checker based on Pep8 style guide."""
+
+    NAME = "Pep8"
 
     def __init__(self):
         """Create a new instance of CheckerPep8."""
@@ -164,6 +205,8 @@ class CheckerPep8(Checker):
 class CheckerPyLint(Checker):
     """Python code checker based on PyLint library."""
 
+    NAME = "PyLint"
+
     def __init__(self):
         """Create a new instance of CheckerPyLint."""
 
@@ -185,9 +228,9 @@ class CheckerPyLint(Checker):
         out_result = StringIO()
         call = Popen(self.args, stdout=PIPE, stderr=PIPE)
         try:
-            out_result.write(call.communicate()[0].decode(encoding="UTF-8"))       
+            out_result.write(call.communicate()[0].decode(encoding="UTF-8"))
         except BrokenPipeError:
-            call.kill()        
+            call.kill()
         return out_result
 
     def _call_checker_deprecated(self, filepath):

@@ -21,3 +21,6 @@ class PythonCheckerWindowActivatable(controller.CheckerController):
     def do_update_state(self):
         pass
 
+    def do_create_configure_widget(self):
+        return self.configure()
+

@@ -2,15 +2,15 @@
 
 This file stores the error list treeview with scrollbars.
 """
- 
+
+from io import StringIO
+from subprocess import Popen
+from subprocess import PIPE
 from collections import namedtuple
 from gi import require_version
 from gi.repository import Gtk
 from gi.repository import GObject
 from gi.repository import GdkPixbuf
-from io import StringIO
-from subprocess import Popen
-from subprocess import PIPE
 
 from . _decorators import threaded_with_glib
 require_version("Gtk", "3.0")
@@ -75,15 +75,21 @@ class CheckerTreeView(Gtk.TreeView):
     def append(self, error, icon):
         """Append an error row to the error list model."""
 
-        self.props.model.append(
-            (icon, error.code, error.line, error.column, error.message)
-        )
+        try:
+            self.props.model.append(
+                (icon, error.code, error.line, error.column, error.message)
+            )
+        except AttributeError:
+            pass
 
     @threaded_with_glib
     def clear(self):
         """Clear the error list model."""
 
-        self.props.model.clear()
+        try:
+            self.props.model.clear()
+        except AttributeError:
+            pass
 
 
 class CheckerView(Gtk.ScrolledWindow):
@@ -97,6 +103,8 @@ class CheckerView(Gtk.ScrolledWindow):
         "Python Checker"
     PANEL_ICON =\
         Gtk.Image.new_from_stock(Gtk.STOCK_YES, Gtk.IconSize.MENU)
+    VERSION_STR =\
+        "gedit - Version "
 
     def __init__(self):
         """Create a new instance of CheckerView."""
@@ -110,19 +118,18 @@ class CheckerView(Gtk.ScrolledWindow):
     def get_gedit_version(self):
         """Return Gedit version in hexadecimal format."""
 
-        VERSION_STR = "gedit - Version "        
         version = int("0x030000", 16)
         out = StringIO()
         try:
             call = Popen(["gedit", "--version"], stdout=PIPE, stderr=PIPE)
             out.write(call.communicate()[0].decode(encoding="UTF-8"))
             out.seek(0)
-            out = list(l.strip("\n") for l in out.readlines())
-            out = [l for l in out if l.startswith(VERSION_STR)]
-            if out:
-                out = out[-1].strip(VERSION_STR).split(" ")[0].split(".")
-                out = [int(x) for x in out]
-                version = int("0x{:02d}{:02d}{:02d}".format(*out), 16)
+            lst = list(l.strip("\n") for l in out.readlines())
+            lst = [l for l in lst if l.startswith(self.VERSION_STR)]
+            if lst:
+                lst = lst[-1].strip(self.VERSION_STR).split(" ")[0].split(".")
+                lst = [int(x) for x in lst]
+                version = int("0x{:02d}{:02d}{:02d}".format(*lst), 16)
         except BrokenPipeError:
             pass
         return version
@@ -131,13 +138,13 @@ class CheckerView(Gtk.ScrolledWindow):
         """Add the plugin tab to the panel."""
 
         self.panel = panel
-        if self.version < 0x031200:        
+        if self.version < 0x031200:
             self.panel.add_item(
                 self, self.PANEL_NAME, self.PANEL_TITLE,
                 self.PANEL_ICON)
             self.panel.activate_item(self)
             self.treeview.show_all()
-        else:        
+        else:
             self.show()
             self.panel.add_titled(self, self.PANEL_NAME, self.PANEL_TITLE)
             self.treeview.show_all()
@@ -168,4 +175,43 @@ class CheckerView(Gtk.ScrolledWindow):
         """Clear the error list model."""
 
         self.treeview.clear()
+
+
+class CheckerConfiguratorPage(Gtk.Box):
+    """Class defining pages within the preferences dialog."""
+
+    __gtype_name__ = "CheckerConfiguratorPage"
+
+    BORDER_WIDTH = 10
+    UPDOWN = Gtk.Orientation.VERTICAL
+
+    def __init__(self, name):
+        """Create a new instance of CheckerConfiguratorPage."""
+
+        super(CheckerConfiguratorPage, self).__init__(orientation=self.UPDOWN)
+        self.set_border_width(self.BORDER_WIDTH)
+        self.name = name
+
+        # Set check button which enables or disables the checker.
+        self.check_enable = Gtk.CheckButton("Enable {} checker".format(name))
+        self.pack_start(self.check_enable, True, True, 0)
+
+
+class CheckerConfiguratorView(Gtk.Notebook):
+    """Class defining the content of the preferences dialog."""
+
+    __gtype_name__ = "CheckerConfiguratorView"
+
+    def __init__(self):
+        """Create a new instance of CheckerConfiguratorView."""
+
+        super(CheckerConfiguratorView, self).__init__()
+
+        name1 = "Pep8"
+        self.page1 = CheckerConfiguratorPage(name1)
+        self.append_page(self.page1, Gtk.Label(name1))
+
+        name2 = "PyLint"
+        self.page2 = CheckerConfiguratorPage(name2)
+        self.append_page(self.page2, Gtk.Label(name2))
 

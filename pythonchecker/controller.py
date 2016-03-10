@@ -6,15 +6,20 @@ This file stores the plugin controller class.
 import time
 from gi.repository import GObject
 from gi.repository import Gedit
+from gi.repository import PeasGtk
 
 from . _decorators import threaded_with_glib
 from . _decorators import threaded_with_python
 from . model import CheckerPep8
 from . model import CheckerPyLint
+from . model import CheckerConfigurator
 from . view import CheckerView
+from . view import CheckerConfiguratorView
 
 
-class CheckerController(GObject.Object, Gedit.WindowActivatable):
+class CheckerController(GObject.Object, Gedit.WindowActivatable,
+                        PeasGtk.Configurable):
+    """Controller for the main plugin."""
 
     __gtype_name__ = "CheckerController"
     window = GObject.property(type=Gedit.Window)
@@ -60,6 +65,22 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
             for obj, handler in self.handlers:
                 obj.disconnect(handler)
 
+    def configure(self):
+        """Load a dialog to set plugin preferences."""
+
+        configurator_controller = CheckerConfiguratorController()
+        return configurator_controller.view
+
+    def on_doc_loaded(self, *args):
+        """Handler triggered when a document is loaded."""
+
+        self.update(*args)
+
+    def on_doc_saved(self, *args):
+        """Handler triggered when a document is saved."""
+
+        self.update(*args)
+
     def on_tab_added(self, *args):
         """Handler triggered when a tab is added."""
 
@@ -83,21 +104,6 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
     def on_tab_changed(self, *args):
         """Handler triggered when the active tab is changed."""
 
-#        content = self._get_active_text()
-#        if content:
-#            self.update(*args)
-#        else:
-#            self.view.clear()
-        self.update(*args)
-
-    def on_doc_loaded(self, *args):
-        """Handler triggered when a document is loaded."""
-
-        self.update(*args)
-
-    def on_doc_saved(self, *args):
-        """Handler triggered when a document is saved."""
-
         self.update(*args)
 
     @threaded_with_python
@@ -120,10 +126,10 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
                 msg = "Checking code in {}".format(filename)
                 self.update_statusbar(msg, life=0)
 
-                checkers = [
-                    CheckerPep8(),
-                    CheckerPyLint(),
-                ]
+                db = CheckerConfigurator()
+                checkers = [CheckerPep8(), CheckerPyLint()]
+                checkers = [c for c in checkers if db.load(c.NAME)["enable"]]
+                db = None
 
                 errors = (x for c in checkers for x in c.check_file(filepath))
                 errors = sorted(errors, key=lambda x: (x.line, x.column))
@@ -141,6 +147,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
 
     @threaded_with_glib
     def clear_statusbar(self):
+        """Set the statusbar pristine."""
 
         statusbar = self.window.get_statusbar()
         context_id = statusbar.get_context_id(self.__gtype_name__)
@@ -149,6 +156,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
 
     @threaded_with_glib
     def push_to_statusbar(self, message):
+        """Push a message to the statusbar."""
 
         statusbar = self.window.get_statusbar()
         context_id = statusbar.get_context_id(self.__gtype_name__)
@@ -156,6 +164,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
         statusbar.push(context_id, message)
 
     def update_statusbar(self, message, life=None):
+        """Clean and push a message to the statusbar for a certain time."""
 
         life = life if life is not None else self.STATUSBAR_MESSAGE_DELAY
 
@@ -166,6 +175,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
             self.clear_statusbar()
 
     def _get_active_text(self):
+        """Return the text from the active document."""
 
         active_view = self.window.get_active_view()
 
@@ -177,4 +187,41 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable):
             end = active_doc.get_end_iter()
 
             return active_view.get_buffer().get_text(begin, end, False)
+
+
+class CheckerConfiguratorController(object):
+    """Controller for the preferences dialog."""
+
+    def __init__(self):
+        """Return a new instance of CheckerConfiguratorController."""
+
+        # Load options from json file and preferences dialog.
+        self.database = CheckerConfigurator()
+        self.view = CheckerConfiguratorView()
+
+        for page in self.view.get_children():
+
+            # Get property "enable".
+            args = self.database.load(page.name)
+            try:
+                args["enable"]
+            except KeyError:
+                args["enable"] = False
+            page.check_enable.set_active(args["enable"])
+            page.check_enable.connect("toggled", self.on_check_enable_toggled)
+
+        # Create handlers.
+        self.view.connect("destroy", self.on_closed)
+
+    def on_closed(self, *args):
+        """Handler triggered when the preferences dialog is closed."""
+
+        self.database.push()
+
+    def on_check_enable_toggled(self, check_enable):
+        """Handler triggered when the enable check is toggled."""
+
+        page = check_enable.get_parent()
+        args = self.database.load(page.name)
+        args["enable"] = not args["enable"]
 
