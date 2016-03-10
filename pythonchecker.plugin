@@ -2,9 +2,9 @@
 Loader=python3
 Module=pythonchecker
 IAge=3
-Name=A Python checker
+Name=Python Checker
 Description=A Python code checker based on PEP8 and PyLint.
 Authors=Victor Molina Garcia <victor.molina@usal.es>
 Copyright=Copyright © 2016 Victor Molina Garcia <victor.molina@usal.es>
-Website=http://www.github.com/molinav
+Website=http://www.github.com/molinav/gedit-pythonchecker
 
