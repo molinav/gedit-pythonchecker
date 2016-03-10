@@ -11,6 +11,7 @@ It is needed at least:
 * Python 3.2+
 * python3-pep8
 * python3-pylint
+* gir1.2-gtksource-3.0
 
 Please be sure that `python3` versions of `pep8` and `pylint` are called when using these commands in a terminal (and not the corresponding `python2` versions). This is currently necessary because these paths are still not configurable.
 
