@@ -8,9 +8,10 @@ from subprocess import Popen
 from subprocess import PIPE
 from collections import namedtuple
 from gi import require_version
-from gi.repository import Gtk
-from gi.repository import GObject
 from gi.repository import GdkPixbuf
+from gi.repository import Gedit
+from gi.repository import GObject
+from gi.repository import Gtk
 
 from . _decorators import threaded_with_glib
 require_version("Gtk", "3.0")
@@ -138,27 +139,35 @@ class CheckerView(Gtk.ScrolledWindow):
         """Add the plugin tab to the panel."""
 
         self.panel = panel
-        if self.version < 0x031200:
-            self.panel.add_item(
-                self, self.PANEL_NAME, self.PANEL_TITLE,
-                self.PANEL_ICON)
-            self.panel.activate_item(self)
-            self.treeview.show_all()
-        else:
+        if isinstance(self.panel, Gtk.Stack):
+            # Proceed if the panel is a Gtk.Stack (side panel since Gedit
+            # version 3.12 or bottom panel).
             self.show()
             self.panel.add_titled(self, self.PANEL_NAME, self.PANEL_TITLE)
             self.treeview.show_all()
             self.panel.set_visible_child(
                 self.panel.get_child_by_name(self.PANEL_NAME))
+        else:
+            # Proceed if the panel is a Gedit.Panel (side panel prior to
+            # Gedit version 3.12).
+            self.panel.add_item(
+                self, self.PANEL_NAME, self.PANEL_TITLE,
+                self.PANEL_ICON)
+            self.panel.activate_item(self)
+            self.treeview.show_all()
 
     def remove_from_panel(self):
         """Remove the plugin tab from the panel."""
 
         if self.panel:
-            if self.version < 0x031200:
-                self.panel.remove_item(self)
-            else:
+            if isinstance(self.panel, Gtk.Stack):
+                # Proceed if the panel is a Gtk.Stack (side panel since Gedit
+                # version 3.12 or bottom panel).
                 self.panel.remove(self)
+            else:
+                # Proceed if the panel is a Gedit.Panel (side panel prior to
+                # Gedit version 3.12).
+                self.panel.remove_item(self)
             self.panel = None
 
     def append(self, error):
@@ -183,14 +192,46 @@ class CheckerConfiguratorPage(Gtk.Box):
     __gtype_name__ = "CheckerConfiguratorPage"
 
     BORDER_WIDTH = 10
-    UPDOWN = Gtk.Orientation.VERTICAL
 
     def __init__(self, name):
         """Create a new instance of CheckerConfiguratorPage."""
 
-        super(CheckerConfiguratorPage, self).__init__(orientation=self.UPDOWN)
+        super(CheckerConfiguratorPage, self).__init__(
+            orientation=Gtk.Orientation.VERTICAL)
         self.set_border_width(self.BORDER_WIDTH)
         self.name = name
+
+
+class CheckerConfiguratorPageGeneral(CheckerConfiguratorPage):
+    """Class defining page for general preferences."""
+
+    def __init__(self, name):
+
+        super(CheckerConfiguratorPageGeneral, self).__init__(name)
+
+        # Set combobox to select plugin's location.
+        label = Gtk.Label("Plugin location")
+        self.combo_model = Gtk.ListStore(bool, str)
+        self.combo_model.append([False, "Side panel"])
+        self.combo_model.append([True, "Bottom panel"])
+        self.combo_location = Gtk.ComboBox.new_with_model(self.combo_model)
+        renderer_text = Gtk.CellRendererText()
+        self.combo_location.pack_start(renderer_text, True)
+        self.combo_location.add_attribute(renderer_text, "text", 1)
+
+        # Add combobox and label to the configuration page.
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        hbox.pack_start(label, True, True, 0)
+        hbox.pack_end(self.combo_location, True, True, 0)
+        self.pack_start(hbox, True, True, 0)
+
+
+class CheckerConfiguratorPageChecker(CheckerConfiguratorPage):
+    """Class defining page for checker preferences."""
+
+    def __init__(self, name):
+
+        super(CheckerConfiguratorPageChecker, self).__init__(name)
 
         # Set check button which enables or disables the checker.
         self.check_enable = Gtk.CheckButton("Enable {} checker".format(name))
@@ -207,11 +248,15 @@ class CheckerConfiguratorView(Gtk.Notebook):
 
         super(CheckerConfiguratorView, self).__init__()
 
+        name0 = "General"
+        self.page0 = CheckerConfiguratorPageGeneral(name0)
+        self.append_page(self.page0, Gtk.Label(name0))
+
         name1 = "Pep8"
-        self.page1 = CheckerConfiguratorPage(name1)
+        self.page1 = CheckerConfiguratorPageChecker(name1)
         self.append_page(self.page1, Gtk.Label(name1))
 
         name2 = "PyLint"
-        self.page2 = CheckerConfiguratorPage(name2)
+        self.page2 = CheckerConfiguratorPageChecker(name2)
         self.append_page(self.page2, Gtk.Label(name2))
 

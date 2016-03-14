@@ -4,8 +4,8 @@ This file stores the plugin controller class.
 """
 
 import time
-from gi.repository import GObject
 from gi.repository import Gedit
+from gi.repository import GObject
 from gi.repository import PeasGtk
 
 from . _decorators import threaded_with_glib
@@ -37,21 +37,37 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
     def enable(self):
         """Add the plugin tab to the window panel."""
 
+        # Create the treeview if it does not exist and check if the treeview
+        # is already within a panel.
         if not self.view:
-
-            # Add tab to panel.
-            panel = self.window.get_side_panel()
             self.view = CheckerView()
-            self.view.add_to_panel(panel)
+        if self.view.panel:
+            self.disable()
 
-            # Create handlers.
-            window = self.window
-            call = window.connect("tab-added", self.on_tab_added)
-            self.handlers.append((window, call))
-            call = window.connect("tab-removed", self.on_tab_removed)
-            self.handlers.append((window, call))
-            call = window.connect("active-tab-changed", self.on_tab_changed)
-            self.handlers.append((window, call))
+        # Read panel location (True: side panel, False: bottom panel).
+        db = CheckerConfigurator()
+        db_g = db.load("General")
+        try:
+            db_g["location"]
+        except KeyError:
+            db_g["location"] = True
+        db.push()
+
+        # Add tab to panel.
+        if not db_g["location"]:
+            panel = self.window.get_side_panel()
+        else:
+            panel = self.window.get_bottom_panel()
+        self.view.add_to_panel(panel)
+
+        # Create handlers.
+        window = self.window
+        call = window.connect("tab-added", self.on_tab_added)
+        self.handlers.append((window, call))
+        call = window.connect("tab-removed", self.on_tab_removed)
+        self.handlers.append((window, call))
+        call = window.connect("active-tab-changed", self.on_tab_changed)
+        self.handlers.append((window, call))
 
     def disable(self):
         """Remove the plugin tab from the window panel."""
@@ -128,7 +144,14 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
 
                 db = CheckerConfigurator()
                 checkers = [CheckerPep8(), CheckerPyLint()]
-                checkers = [c for c in checkers if db.load(c.NAME)["enable"]]
+                for c in checkers:
+                    db_c = db.load(c.NAME)
+                    try:
+                        db_c["enable"]
+                    except KeyError:
+                        db_c["enable"] = False
+                    if not db_c["enable"]:
+                        checkers.remove(c)
                 db = None
 
                 errors = (x for c in checkers for x in c.check_file(filepath))
@@ -149,19 +172,23 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
     def clear_statusbar(self):
         """Set the statusbar pristine."""
 
-        statusbar = self.window.get_statusbar()
-        context_id = statusbar.get_context_id(self.__gtype_name__)
-
-        statusbar.remove_all(context_id)
+        try:
+            statusbar = self.window.get_statusbar()
+            context_id = statusbar.get_context_id(self.__gtype_name__)
+            statusbar.remove_all(context_id)
+        except AttributeError:
+            pass
 
     @threaded_with_glib
     def push_to_statusbar(self, message):
         """Push a message to the statusbar."""
 
-        statusbar = self.window.get_statusbar()
-        context_id = statusbar.get_context_id(self.__gtype_name__)
-
-        statusbar.push(context_id, message)
+        try:
+            statusbar = self.window.get_statusbar()
+            context_id = statusbar.get_context_id(self.__gtype_name__)
+            statusbar.push(context_id, message)
+        except AttributeError:
+            pass
 
     def update_statusbar(self, message, life=None):
         """Clean and push a message to the statusbar for a certain time."""
@@ -201,14 +228,28 @@ class CheckerConfiguratorController(object):
 
         for page in self.view.get_children():
 
-            # Get property "enable".
-            args = self.database.load(page.name)
-            try:
-                args["enable"]
-            except KeyError:
-                args["enable"] = False
-            page.check_enable.set_active(args["enable"])
-            page.check_enable.connect("toggled", self.on_check_enable_toggled)
+            if page.name == "General":
+                # Get property "location".
+                db_g = self.database.load(page.name)
+                try:
+                    db_g["location"]
+                except KeyError:
+                    db_g["location"] = 0
+                # Set page elements.
+                page.combo_location.set_active(db_g["location"])
+                page.combo_location.connect(
+                    "changed", self.on_combo_location_changed)
+            else:
+                # Get property "enable".
+                db_c = self.database.load(page.name)
+                try:
+                    db_c["enable"]
+                except KeyError:
+                    db_c["enable"] = False
+                # Set page elements.
+                page.check_enable.set_active(db_c["enable"])
+                page.check_enable.connect(
+                    "toggled", self.on_check_enable_toggled)
 
         # Create handlers.
         self.view.connect("destroy", self.on_closed)
@@ -222,6 +263,15 @@ class CheckerConfiguratorController(object):
         """Handler triggered when the enable check is toggled."""
 
         page = check_enable.get_parent()
-        args = self.database.load(page.name)
-        args["enable"] = not args["enable"]
+        db_c = self.database.load(page.name)
+        db_c["enable"] = not db_c["enable"]
+
+    def on_combo_location_changed(self, combo_location):
+        """Handler triggered when the enable check is toggled."""
+
+        page = combo_location.get_parent().get_parent()
+        db_g = self.database.load(page.name)
+        # Update property "location".
+        active_iter = combo_location.get_active_iter()
+        db_g["location"] = combo_location.get_model()[active_iter][0]
 

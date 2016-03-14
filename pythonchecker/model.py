@@ -56,7 +56,7 @@ class CheckerConfigurator(object):
     def __init__(self):
         """Return a new instance of CheckerConfigurator."""
 
-        self.dict = {"Pep8": {}, "PyLint": {}}
+        self.dict = {"General": {}, "Pep8": {}, "PyLint": {}}
         if not os.path.exists(self.JSON_PATH):
             with open(self.JSON_PATH, "w") as json_file:
                 pass
@@ -71,7 +71,9 @@ class CheckerConfigurator(object):
         """Return the preferences for a specific checker."""
 
         try:
-            return self.dict[key]
+            out = self.dict[key]
+            if isinstance(out, dict):
+                return out
         except KeyError:
             pass
 
