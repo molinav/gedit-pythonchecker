@@ -14,11 +14,13 @@ class CheckerError(object):
     """Class model for code check errors."""
 
     DEFAULT_CASE = "E"
+    DEFAULT_TYPE = ""
 
     def __init__(self, code, line, column, message):
         """Return a new instance of CheckerError"""
 
         self.case = self.DEFAULT_CASE
+        self.type = self.DEFAULT_TYPE
         self.code = self.fit_to_string(code)
         self.line = self.fit_to_unsigned_integer(line)
         self.column = self.fit_to_unsigned_integer(column)
@@ -48,6 +50,8 @@ class Checker(object):
     """Abstract class for Python code checkers."""
 
     __metacls__ = abc.ABCMeta
+
+    NAME = "Checker"
 
     REGEX = r"({}\w\d*):({}\d*):({}\d*):({}.*)".format(
         "?P<code>", "?P<line>", "?P<column>", "?P<message>")
@@ -85,6 +89,7 @@ class Checker(object):
         """Return new instance of CheckError."""
 
         error = CheckerError(**kwargs)
+        error.type = self.NAME.lower()
         self._set_error_case(error)
         return error
 
@@ -101,7 +106,7 @@ class CheckerPep8(Checker):
     NAME = "Pep8"
 
     def __init__(self):
-        """Create a new instance of CheckerPep8."""
+        """Run when creating a new instance of CheckerPep8."""
 
         self.args = [
             "--format=%(code)s:%(row)d:%(col)d:%(text)s",
@@ -170,7 +175,7 @@ class CheckerPyLint(Checker):
     NAME = "PyLint"
 
     def __init__(self):
-        """Create a new instance of CheckerPyLint."""
+        """Run when creating a new instance of CheckerPyLint."""
 
         self.args = [
             "--msg-template='{msg_id}:{line}:{column}:{msg}'",
