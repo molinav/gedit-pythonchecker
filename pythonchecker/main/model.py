@@ -1,6 +1,6 @@
-"""./model.py
+"""main/model.py
 
-This file stores the plugin model classes (such as the code checkers).
+Store the plugin model classes (such as the code checkers).
 """
 
 import abc

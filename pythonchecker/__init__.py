@@ -1,4 +1,4 @@
-from . import controller
+from . main.controller import CheckerController
 
 
 class PythonCheckerPluginAppActivatable(object):
@@ -10,7 +10,7 @@ class PythonCheckerPluginAppActivatable(object):
         pass
 
 
-class PythonCheckerWindowActivatable(controller.CheckerController):
+class PythonCheckerWindowActivatable(CheckerController):
     
     def do_activate(self):
         self.enable()

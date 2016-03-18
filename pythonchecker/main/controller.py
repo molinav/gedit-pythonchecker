@@ -1,6 +1,6 @@
-"""./controller.py
+"""main/controller.py
 
-This file stores the plugin controller class.
+Store the plugin's main controller.
 """
 
 import time
@@ -8,11 +8,10 @@ from gi.repository import Gedit
 from gi.repository import GObject
 from gi.repository import PeasGtk
 
-from . _decorators import threaded_with_glib
-from . _decorators import threaded_with_python
-from . conf.model import CheckerConfigurator
-from . conf.controller import CheckerConfiguratorController
-from . conf.view import CheckerConfiguratorView
+from .. _decorators import threaded_with_glib
+from .. _decorators import threaded_with_python
+from .. conf.controller import CheckerConfiguratorController
+from .. conf.model import CheckerConfigurator
 from . model import CheckerPep8
 from . model import CheckerPyLint
 from . view import CheckerView
