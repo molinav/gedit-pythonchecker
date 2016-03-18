@@ -77,7 +77,7 @@ class TreeView(Gtk.TreeView):
 
         try:
             self.props.model.append(
-                (icon, error.type, error.code, 
+                (icon, error.type, error.code,
                  error.line, error.column, error.message)
             )
         except AttributeError:
@@ -104,8 +104,6 @@ class View(Gtk.ScrolledWindow):
         "Python Checker"
     PANEL_ICON =\
         Gtk.Image.new_from_stock(Gtk.STOCK_YES, Gtk.IconSize.MENU)
-    VERSION_STR =\
-        "gedit - Version "
 
     def __init__(self):
         """Run when creating a new instance of View."""
@@ -114,29 +112,6 @@ class View(Gtk.ScrolledWindow):
         self.treeview = TreeView()
         self.add(self.treeview)
         self.panel = None
-        self.version = self.get_gedit_version()
-
-    def get_gedit_version(self):
-        """Return Gedit version in hexadecimal format."""
-
-        from io import StringIO
-        from subprocess import Popen
-        from subprocess import PIPE
-        version = int("0x030000", 16)
-        out = StringIO()
-        try:
-            call = Popen(["gedit", "--version"], stdout=PIPE, stderr=PIPE)
-            out.write(call.communicate()[0].decode(encoding="UTF-8"))
-            out.seek(0)
-            lst = list(l.strip("\n") for l in out.readlines())
-            lst = [l for l in lst if l.startswith(self.VERSION_STR)]
-            if lst:
-                lst = lst[-1].strip(self.VERSION_STR).split(" ")[0].split(".")
-                lst = [int(x) for x in lst]
-                version = int("0x{:02d}{:02d}{:02d}".format(*lst), 16)
-        except BrokenPipeError:
-            pass
-        return version
 
     def add_to_panel(self, panel):
         """Add the plugin tab to the panel."""
