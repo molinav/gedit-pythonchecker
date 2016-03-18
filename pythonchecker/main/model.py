@@ -124,7 +124,7 @@ class CheckerPep8(Checker):
             call.kill()
         return out_result
 
-    def call_checker_deprecated(self, filepath):
+    def _call_checker_deprecated(self, filepath):
         """Deprecated version of call_checker for CheckerPep8."""
 
         import sys
