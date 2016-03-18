@@ -13,10 +13,10 @@ from .. _decorators import threaded_with_glib
 require_version("Gtk", "3.0")
 
 
-class CheckerTreeView(Gtk.TreeView):
+class TreeView(Gtk.TreeView):
     """Generic class for an error treeview."""
 
-    __gtype_name__ = "CheckerTreeView"
+    __gtype_name__ = "PythonChecker_Main_TreeView"
 
     _Column =\
         namedtuple("Column", ["name", "title", "renderer", "type"])
@@ -27,6 +27,8 @@ class CheckerTreeView(Gtk.TreeView):
     COLUMNS = [
         _Column("Case", "",
                 Gtk.CellRendererPixbuf, GdkPixbuf.Pixbuf),
+        _Column("Type", "",
+                Gtk.CellRendererText, GObject.TYPE_STRING),
         _Column("Code", "Code",
                 Gtk.CellRendererText, GObject.TYPE_STRING),
         _Column("Line", "L",
@@ -46,9 +48,9 @@ class CheckerTreeView(Gtk.TreeView):
     }
 
     def __init__(self):
-        """Constructor of an error treeview."""
+        """Run when creating a new instance of TreeView."""
 
-        super(CheckerTreeView, self).__init__()
+        super(TreeView, self).__init__()
 
         # Set treeview model.
         self.set_model(Gtk.ListStore(*[c.type for c in self.COLUMNS]))
@@ -63,6 +65,7 @@ class CheckerTreeView(Gtk.TreeView):
             column.pack_start(cellrd, False)
             attr = c.renderer.__name__.lstrip("CellRenderer").lower()
             column.add_attribute(cellrd, attr, i)
+            column.set_visible(c.name != "Type")
             column.set_resizable(True)
             column.set_reorderable(True)
             column.set_sort_column_id(i)
@@ -74,7 +77,8 @@ class CheckerTreeView(Gtk.TreeView):
 
         try:
             self.props.model.append(
-                (icon, error.code, error.line, error.column, error.message)
+                (icon, error.type, error.code, 
+                 error.line, error.column, error.message)
             )
         except AttributeError:
             pass
@@ -89,10 +93,10 @@ class CheckerTreeView(Gtk.TreeView):
             pass
 
 
-class CheckerView(Gtk.ScrolledWindow):
+class View(Gtk.ScrolledWindow):
     """Class for a plugin tab with scrollbars."""
 
-    __gtype_name__ = "CheckerView"
+    __gtype_name__ = "PythonChecker_Main_View"
 
     PANEL_NAME =\
         "Python Checker"
@@ -104,10 +108,10 @@ class CheckerView(Gtk.ScrolledWindow):
         "gedit - Version "
 
     def __init__(self):
-        """Create a new instance of CheckerView."""
+        """Run when creating a new instance of View."""
 
-        super(CheckerView, self).__init__()
-        self.treeview = CheckerTreeView()
+        super(View, self).__init__()
+        self.treeview = TreeView()
         self.add(self.treeview)
         self.panel = None
         self.version = self.get_gedit_version()

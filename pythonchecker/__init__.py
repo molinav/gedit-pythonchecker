@@ -1,9 +1,9 @@
 """Gedit Python Checker Plugin"""
 
-from . main.controller import CheckerController
+from . main.controller import Controller
 
 
-class WindowActivatable(CheckerController):
+class WindowActivatable(Controller):
     """Plugin class."""
 
     def do_activate(self):

@@ -14,23 +14,23 @@ from .. conf.controller import Controller as ConfController
 from .. conf.model import Configuration
 from . model import CheckerPep8
 from . model import CheckerPyLint
-from . view import CheckerView
+from . view import View
 
 
-class CheckerController(GObject.Object, Gedit.WindowActivatable,
+class Controller(GObject.Object, Gedit.WindowActivatable,
                         PeasGtk.Configurable):
     """Controller for the main plugin."""
 
-    __gtype_name__ = "CheckerController"
+    __gtype_name__ = "PythonChecker_Main_Controller"
     window = GObject.property(type=Gedit.Window)
 
     STATUSBAR_MESSAGE_DELAY = 3
 
     def __init__(self):
-        """Create a new instance of CheckerController."""
+        """Run when creating a new instance of CheckerController."""
 
         GObject.threads_init()
-        super(CheckerController, self).__init__()
+        super(Controller, self).__init__()
         self.handlers = []
         self.view = None
 
@@ -40,7 +40,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
         # Create the treeview if it does not exist and check if the treeview
         # is already within a panel.
         if not self.view:
-            self.view = CheckerView()
+            self.view = View()
         if self.view.panel:
             self.disable()
 
@@ -88,17 +88,17 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
         return configurator_controller.view
 
     def on_doc_loaded(self, *args):
-        """Handler triggered when a document is loaded."""
+        """Trigger when a document is loaded."""
 
         self.update(*args)
 
     def on_doc_saved(self, *args):
-        """Handler triggered when a document is saved."""
+        """Trigger when a document is saved."""
 
         self.update(*args)
 
     def on_tab_added(self, *args):
-        """Handler triggered when a tab is added."""
+        """Trigger when a tab is added."""
 
         tab = args[1]
         # Create document event connections.
@@ -109,7 +109,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
         self.handlers.append((doc, call))
 
     def on_tab_removed(self, *args):
-        """Handler triggered when a tab is removed."""
+        """Trigger when a tab is removed."""
 
         window = args[0]
         # Clear the side panel in case there are no tabs opened.
@@ -118,7 +118,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
             self.view.clear()
 
     def on_tab_changed(self, *args):
-        """Handler triggered when the active tab is changed."""
+        """Trigger when the active tab is changed."""
 
         self.update(*args)
 
