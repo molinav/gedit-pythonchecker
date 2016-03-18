@@ -7,7 +7,7 @@ import os
 import json
 
 
-class CheckerConfigurator(object):
+class Configuration(object):
     """Interface to handle the database of preferences."""
 
     JSON_FOLDER = os.path.dirname(os.path.realpath(__file__))

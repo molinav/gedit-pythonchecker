@@ -10,8 +10,8 @@ from gi.repository import PeasGtk
 
 from .. _decorators import threaded_with_glib
 from .. _decorators import threaded_with_python
-from .. conf.controller import CheckerConfiguratorController
-from .. conf.model import CheckerConfigurator
+from .. conf.controller import Controller as ConfController
+from .. conf.model import Configuration
 from . model import CheckerPep8
 from . model import CheckerPyLint
 from . view import CheckerView
@@ -45,7 +45,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
             self.disable()
 
         # Read panel location (True: side panel, False: bottom panel).
-        db = CheckerConfigurator()
+        db = Configuration()
         db_g = db.load("General")
         try:
             db_g["location"]
@@ -84,7 +84,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
     def configure(self):
         """Load a dialog to set plugin preferences."""
 
-        configurator_controller = CheckerConfiguratorController()
+        configurator_controller = ConfController()
         return configurator_controller.view
 
     def on_doc_loaded(self, *args):
@@ -142,7 +142,7 @@ class CheckerController(GObject.Object, Gedit.WindowActivatable,
                 msg = "Checking code in {}".format(filename)
                 self.update_statusbar(msg, life=0)
 
-                db = CheckerConfigurator()
+                db = Configuration()
                 checkers = [CheckerPep8(), CheckerPyLint()]
                 for c in checkers:
                     db_c = db.load(c.NAME)

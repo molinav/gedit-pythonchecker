@@ -3,19 +3,19 @@
 Store the plugin's preferences dialog controller.
 """
 
-from . model import CheckerConfigurator
-from . view import CheckerConfiguratorView
+from . model import Configuration
+from . view import View
 
 
-class CheckerConfiguratorController(object):
+class Controller(object):
     """Controller for the preferences dialog."""
 
     def __init__(self):
-        """Return a new instance of CheckerConfiguratorController."""
+        """Run when creating a new instance of Controller."""
 
         # Load options from json file and preferences dialog.
-        self.database = CheckerConfigurator()
-        self.view = CheckerConfiguratorView()
+        self.database = Configuration()
+        self.view = View()
 
         for page in self.view.get_children():
 
@@ -43,22 +43,22 @@ class CheckerConfiguratorController(object):
                     "toggled", self.on_check_enable_toggled)
 
         # Create handlers.
-        self.view.connect("destroy", self.on_closed)
-
-    def on_closed(self, *args):
-        """Handler triggered when the preferences dialog is closed."""
-
-        self.database.push()
+        self.view.connect("destroy", self.on_close)
 
     def on_check_enable_toggled(self, check_enable):
-        """Handler triggered when the enable check is toggled."""
+        """Trigger when the enable check is toggled."""
 
         page = check_enable.get_parent()
         db_c = self.database.load(page.name)
         db_c["enable"] = not db_c["enable"]
 
+    def on_close(self, *args):
+        """Trigger when the preferences dialog is closed."""
+
+        self.database.push()
+
     def on_combo_location_changed(self, combo_location):
-        """Handler triggered when the enable check is toggled."""
+        """Trigger when the combobox for location is changed."""
 
         page = combo_location.get_parent().get_parent()
         db_g = self.database.load(page.name)

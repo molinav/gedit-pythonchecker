@@ -5,80 +5,90 @@ Store the plugin's preferences dialog.
 
 from gi import require_version
 from gi.repository import Gtk
+
 require_version("Gtk", "3.0")
 
 
-class CheckerConfiguratorPage(Gtk.Box):
-    """Class defining pages within the preferences dialog."""
+class Page(Gtk.Box):
+    """Page within the preferences dialog."""
 
-    __gtype_name__ = "CheckerConfiguratorPage"
+    __gtype_name__ = "PythonChecker_Conf_Page"
 
     BORDER_WIDTH = 10
 
-    def __init__(self, name):
-        """Create a new instance of CheckerConfiguratorPage."""
+    VERTICAL = Gtk.Orientation.VERTICAL
+    HORIZONTAL = Gtk.Orientation.HORIZONTAL
 
-        super(CheckerConfiguratorPage, self).__init__(
-            orientation=Gtk.Orientation.VERTICAL)
+    def __init__(self, name):
+        """Run when creating a new Page instance."""
+
+        super(Page, self).__init__(orientation=self.VERTICAL)
         self.set_border_width(self.BORDER_WIDTH)
         self.name = name
 
 
-class CheckerConfiguratorPageGeneral(CheckerConfiguratorPage):
-    """Class defining page for general preferences."""
+class PageGeneral(Page):
+    """Page oriented to general preferences."""
+
+    __gtype_name__ = "PythonChecker_Conf_PageGeneral"
 
     def __init__(self, name):
+        """Run when creating a new PageGeneral instance."""
 
-        super(CheckerConfiguratorPageGeneral, self).__init__(name)
+        super(PageGeneral, self).__init__(name)
 
-        # Set combobox to select plugin's location.
-        label = Gtk.Label("Plugin location ")
-        self.combo_model = Gtk.ListStore(bool, str)
-        self.combo_model.append([False, "Side panel"])
-        self.combo_model.append([True, "Bottom panel"])
-        self.combo_location = Gtk.ComboBox.new_with_model(self.combo_model)
+        # Set label and combobox to select plugin's location.
+        label = Gtk.Label("Plugin location")
+        combo_model = Gtk.ListStore(bool, str)
+        combo_model.append([False, "Side panel"])
+        combo_model.append([True, "Bottom panel"])
         renderer_text = Gtk.CellRendererText()
+        self.combo_location = Gtk.ComboBox.new_with_model(combo_model)
         self.combo_location.pack_start(renderer_text, True)
         self.combo_location.add_attribute(renderer_text, "text", 1)
 
         # Add combobox and label to the configuration page.
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        hbox = Gtk.Box(orientation=self.HORIZONTAL, spacing=0)
         hbox.pack_start(label, True, True, 0)
         hbox.pack_end(self.combo_location, True, True, 0)
         self.pack_start(hbox, True, True, 0)
 
 
-class CheckerConfiguratorPageChecker(CheckerConfiguratorPage):
-    """Class defining page for checker preferences."""
+class PageChecker(Page):
+    """Page oriented to checker preferences."""
+
+    __gtype_name__ = "PythonChecker_Conf_PageChecker"
 
     def __init__(self, name):
+        """Run when creating a new PageChecker instance."""
 
-        super(CheckerConfiguratorPageChecker, self).__init__(name)
+        super(PageChecker, self).__init__(name)
 
         # Set check button which enables or disables the checker.
-        self.check_enable = Gtk.CheckButton("Enable {} checker".format(name))
+        label = "Enable {} checker".format(name)
+        self.check_enable = Gtk.CheckButton(label)
         self.pack_start(self.check_enable, True, True, 0)
 
 
-class CheckerConfiguratorView(Gtk.Notebook):
-    """Class defining the content of the preferences dialog."""
+class View(Gtk.Notebook):
+    """Page container for the preferences dialog."""
 
-    __gtype_name__ = "CheckerConfiguratorView"
+    __gtype_name__ = "PythonChecker_Conf_View"
 
     def __init__(self):
-        """Create a new instance of CheckerConfiguratorView."""
+        """Run when creating a new View instance."""
 
-        super(CheckerConfiguratorView, self).__init__()
+        super(View, self).__init__()
 
         name0 = "General"
-        self.page0 = CheckerConfiguratorPageGeneral(name0)
+        self.page0 = PageGeneral(name0)
         self.append_page(self.page0, Gtk.Label(name0))
 
         name1 = "Pep8"
-        self.page1 = CheckerConfiguratorPageChecker(name1)
+        self.page1 = PageChecker(name1)
         self.append_page(self.page1, Gtk.Label(name1))
 
         name2 = "PyLint"
-        self.page2 = CheckerConfiguratorPageChecker(name2)
+        self.page2 = PageChecker(name2)
         self.append_page(self.page2, Gtk.Label(name2))
 
