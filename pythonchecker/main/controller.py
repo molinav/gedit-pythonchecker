@@ -18,7 +18,7 @@ from . view import View
 
 
 class Controller(GObject.Object, Gedit.WindowActivatable,
-                        PeasGtk.Configurable):
+                 PeasGtk.Configurable):
     """Controller for the main plugin."""
 
     __gtype_name__ = "PythonChecker_Main_Controller"

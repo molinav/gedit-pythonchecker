@@ -129,8 +129,7 @@ class View(Gtk.ScrolledWindow):
             # Proceed if the panel is a Gedit.Panel (side panel prior to
             # Gedit version 3.12).
             self.panel.add_item(
-                self, self.PANEL_NAME, self.PANEL_TITLE,
-                self.PANEL_ICON)
+                self, self.PANEL_NAME, self.PANEL_TITLE, self.PANEL_ICON)
             self.panel.activate_item(self)
             self.treeview.show_all()
 
