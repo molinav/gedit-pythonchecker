@@ -15,7 +15,7 @@ from .. conf.model import Configuration
 from . model import CheckerPep8
 from . model import CheckerPyLint
 from . view import View
-
+ 
 
 class Controller(GObject.Object, Gedit.WindowActivatable,
                  PeasGtk.Configurable):
@@ -32,6 +32,7 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
         GObject.threads_init()
         super(Controller, self).__init__()
         self.handlers = []
+        self.errors = {}
         self.view = None
 
     def enable(self):
@@ -64,19 +65,17 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
         window = self.window
         call = window.connect("tab-added", self.on_tab_added)
         self.handlers.append((window, call))
-        call = window.connect("tab-removed", self.on_tab_removed)
+        call = window.connect("tab-removed", self.update_panel)
         self.handlers.append((window, call))
-        call = window.connect("active-tab-changed", self.on_tab_changed)
+        call = window.connect("active-tab-changed", self.update_panel)
         self.handlers.append((window, call))
 
     def disable(self):
         """Remove the plugin tab from the window panel."""
 
         if self.view:
-
             # Remove tab from panel.
             self.view.remove_from_panel()
-
             # Remove handlers.
             for obj, handler in self.handlers:
                 obj.disconnect(handler)
@@ -87,86 +86,49 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
         configurator_controller = ConfController()
         return configurator_controller.view
 
-    def on_doc_loaded(self, *args):
-        """Trigger when a document is loaded."""
-
-        self.update(*args)
-
-    def on_doc_saved(self, *args):
-        """Trigger when a document is saved."""
-
-        self.update(*args)
-
-    def on_tab_added(self, *args):
+    def on_tab_added(self, window, tab, *args):
         """Trigger when a tab is added."""
 
-        tab = args[1]
         # Create document event connections.
         doc = tab.get_document()
-        call = doc.connect("loaded", self.on_doc_loaded)
+        call = doc.connect("loaded", self.update_errors)
         self.handlers.append((doc, call))
-        call = doc.connect("saved", self.on_doc_saved)
+        call = doc.connect("saved", self.update_errors)
         self.handlers.append((doc, call))
-
-    def on_tab_removed(self, *args):
-        """Trigger when a tab is removed."""
-
-        window = args[0]
-        # Clear the side panel in case there are no tabs opened.
-        active_tab = window.get_active_tab()
-        if not active_tab:
-            self.view.clear()
-
-    def on_tab_changed(self, *args):
-        """Trigger when the active tab is changed."""
-
-        self.update(*args)
 
     @threaded_with_python
-    def update(self, *args):
-        """Update the error list model based on the doc changes."""
+    def update_errors(self, *args):
+        """Update the error list model based on the doc analysis."""
 
-        self.view.clear()
-        active_view = self.window.get_active_view()
-
-        if active_view:
-
-            lang = self.window.get_active_document().get_language()
-
-            if lang and lang.get_name() in "Python 3":
-
-                active_buffer = active_view.get_buffer()
-                filepath = active_buffer.get_uri_for_display()
-                filename = active_buffer.get_short_name_for_display()
-
-                msg = "Checking code in {}".format(filename)
-                self.update_statusbar(msg, life=0)
-
-                db = Configuration()
-                checkers = [CheckerPep8(), CheckerPyLint()]
-                for c in checkers:
-                    db_c = db.load(c.NAME)
-                    try:
-                        db_c["enable"]
-                    except KeyError:
-                        db_c["enable"] = False
-                    if not db_c["enable"]:
-                        checkers.remove(c)
-                db = None
-
-                errors = (x for c in checkers for x in c.check_file(filepath))
-                errors = sorted(errors, key=lambda x: (x.line, x.column))
-
-                active_view = self.window.get_active_view()
-                if active_view:
-                    active_buffer = active_view.get_buffer()
-                    filepath2 = active_buffer.get_uri_for_display()
-                    if filepath == filepath2:
-                        self.view.clear()
-                        for error in errors:
-                            self.view.append(error)
-                        msg = "File {} successfully checked".format(filename)
-                        self.update_statusbar(msg)
+        # Get the document language and proceed only for Python files.
+        doc = args[0]
+        lang = doc.get_language()
+        if lang and lang.get_name() in "Python 3":
+            filepath = doc.get_uri_for_display()
+            filename = doc.get_short_name_for_display()
+            # Update statusbar message.
+            msg = "Checking code in {}".format(filename)
+            self.update_statusbar(msg, life=0)
+            # Filter by activated checkers in the preferences values.
+            db = Configuration()
+            checkers = [CheckerPep8(), CheckerPyLint()]
+            for c in checkers:
+                db_c = db.load(c.NAME)
+                try:
+                    db_c["enable"]
+                except KeyError:
+                    db_c["enable"] = False
+                if not db_c["enable"]:
+                    checkers.remove(c)
+            db = None
+            # Call the checkers and store the output error instances.
+            errors = (x for c in checkers for x in c.check_file(filepath))
+            errors = sorted(errors, key=lambda x: (x.line, x.column))
+            self.errors[filepath] = errors
+            self.update_panel()
+            # Update statusbar message.
+            msg = "File {} successfully checked".format(filename)
+            self.update_statusbar(msg)
 
     @threaded_with_glib
     def clear_statusbar(self):
@@ -200,6 +162,23 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
         time.sleep(life)
         if life:
             self.clear_statusbar()
+
+    def update_panel(self, *args):
+        """Clean the panel and show errors from active document."""
+
+        # Clean the panel error list.
+        self.view.clear()
+        # Locate the document within the tab if it exists.
+        doc = self.window.get_active_document()
+        if doc:
+            # Get the filepath and update the panel error list.
+            filepath = doc.get_uri_for_display()
+            if filepath.startswith("/"):
+                try:
+                    for error in self.errors[filepath]:
+                        self.view.append(error)
+                except KeyError:
+                    pass
 
     def _get_active_text(self):
         """Return the text from the active document."""
