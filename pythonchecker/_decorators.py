@@ -3,7 +3,6 @@
 Auxiliary decorators for plugin methods.
 """
 
-
 from threading import Thread
 from gi.repository import GLib
 

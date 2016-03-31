@@ -180,17 +180,3 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
                 except KeyError:
                     pass
 
-    def _get_active_text(self):
-        """Return the text from the active document."""
-
-        active_view = self.window.get_active_view()
-
-        if active_view:
-
-            active_doc = self.window.get_active_document()
-
-            begin = active_doc.get_start_iter()
-            end = active_doc.get_end_iter()
-
-            return active_view.get_buffer().get_text(begin, end, False)
-

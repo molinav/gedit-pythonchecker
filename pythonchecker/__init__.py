@@ -2,7 +2,7 @@
 
 from . main.controller import Controller
 
-
+ 
 class WindowActivatable(Controller):
     """Plugin class."""
 
