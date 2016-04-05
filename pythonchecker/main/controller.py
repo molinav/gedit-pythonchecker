@@ -15,7 +15,7 @@ from .. conf.model import Configuration
 from . model import CheckerPep8
 from . model import CheckerPyLint
 from . view import View
- 
+
 
 class Controller(GObject.Object, Gedit.WindowActivatable,
                  PeasGtk.Configurable):
@@ -46,16 +46,16 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
             self.disable()
 
         # Read panel location (True: side panel, False: bottom panel).
-        db = Configuration()
-        db_g = db.load("General")
+        conf = Configuration()
+        db_g = conf.load("General")
         try:
-            db_g["location"]
-        except KeyError:
-            db_g["location"] = True
-        db.push()
-
+            db_g.location
+        except AttributeError:
+            db_g.location = False
+        conf.save()
+ 
         # Add tab to panel.
-        if not db_g["location"]:
+        if not db_g.location:
             panel = self.window.get_side_panel()
         else:
             panel = self.window.get_bottom_panel()
@@ -83,8 +83,8 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
     def configure(self):
         """Load a dialog to set plugin preferences."""
 
-        configurator_controller = ConfController()
-        return configurator_controller.view
+        conf_controller = ConfController()
+        return conf_controller.view
 
     def on_tab_added(self, window, tab, *args):
         """Trigger when a tab is added."""
@@ -110,17 +110,17 @@ class Controller(GObject.Object, Gedit.WindowActivatable,
             msg = "Checking code in {}".format(filename)
             self.update_statusbar(msg, life=0)
             # Filter by activated checkers in the preferences values.
-            db = Configuration()
+            conf = Configuration()
             checkers = [CheckerPep8(), CheckerPyLint()]
-            for c in checkers:
-                db_c = db.load(c.NAME)
+            for c in checkers[::-1]:
+                db_c = conf.load(c.NAME)
                 try:
-                    db_c["enable"]
-                except KeyError:
-                    db_c["enable"] = False
-                if not db_c["enable"]:
+                    db_c.enable
+                except AttributeError:
+                    db_c.enable = True
+                if not db_c.enable:
                     checkers.remove(c)
-            db = None
+            conf = None
             # Call the checkers and store the output error instances.
             errors = (x for c in checkers for x in c.check_file(filepath))
             errors = sorted(errors, key=lambda x: (x.line, x.column))
